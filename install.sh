@@ -8,7 +8,9 @@ set -euo pipefail
 BINARY_NAME="antigravity"
 INSTALL_DIR="/usr/local/bin"
 WRAPPER_NAME="agy"
-MANIFEST_URL="https://antigravity-cli-auto-updater-974.storage.googleapis.com/linux-arm/manifest.json"
+MANIFEST_URL="https://storage.googleapis.com/antigravity-public/antigravity-cli/manifest.json"
+# Fallback hardcoded URL if manifest is down
+FALLBACK_BINARY_URL="https://storage.googleapis.com/antigravity-public/antigravity-cli/1.0.7-5436940900761600/linux-arm/cli_linux_arm64.tar.gz"
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -27,10 +29,15 @@ cpu_has_lse() {
 # --- Detecta versão mais recente dinamicamente ---
 fetch_latest_url() {
     info "Consultando versão mais recente..."
-    MANIFEST=$(curl -fsSL "$MANIFEST_URL" 2>/dev/null) || error "Falha ao contactar servidor do Google."
-    BINARY_URL=$(echo "$MANIFEST" | grep -oP '"url"\s*:\s*"\K[^"]+')
-    VERSION=$(echo "$MANIFEST"    | grep -oP '"version"\s*:\s*"\K[^"]+')
-    info "Versão encontrada: $VERSION"
+    if MANIFEST=$(curl -fsSL "$MANIFEST_URL" 2>/dev/null); then
+        BINARY_URL=$(echo "$MANIFEST" | grep -oP '"url"\s*:\s*"\K[^"]+')
+        VERSION=$(echo "$MANIFEST"    | grep -oP '"version"\s*:\s*"\K[^"]+')
+        info "Versão encontrada via manifest: $VERSION"
+    else
+        warn "Falha ao contactar servidor de manifest. Usando fallback seguro..."
+        BINARY_URL="$FALLBACK_BINARY_URL"
+        info "Usando versão de fallback: 1.0.7"
+    fi
 }
 
 # --- Download e extração ---
